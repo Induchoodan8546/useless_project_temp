@@ -11,12 +11,13 @@ SCREEN_HEIGHT = 600
 
 # Colors and Constants
 TERRARIUM_COLOR = (0, 50, 50)
-BODY_SEGMENT_SIZE = 20
-NUM_SEGMENTS = 15
+LIZARD_COLOR = (50, 200, 50) # A base color for our lizard
+MOUTH_COLOR = (0, 0, 0)
+EYE_COLOR = (255, 255, 255)
 
 # Colors for Chithraguptan's moods
 COLOR_BORED = (100, 100, 100)
-COLOR_CONTENT = (255, 200, 100)
+COLOR_CONTENT = (50, 200, 50) # A nice green
 COLOR_PLAYFUL = (50, 255, 50)
 COLOR_SAD = (70, 70, 150)
 COLOR_ANGRY = (255, 50, 50)
@@ -30,6 +31,8 @@ font = pygame.font.SysFont("Arial", 24)
 
 # --- 2. Chithraguptan's Body ---
 body_segments = []
+NUM_SEGMENTS = 15
+BODY_SEGMENT_SIZE = 20
 for i in range(NUM_SEGMENTS):
     body_segments.append(pygame.Rect(400, 300 - i * (BODY_SEGMENT_SIZE - 5), BODY_SEGMENT_SIZE, BODY_SEGMENT_SIZE))
 
@@ -43,9 +46,6 @@ last_click_time = 0
 angry_timer = 0
 random_target_pos = (400, 300)
 last_target_change = pygame.time.get_ticks()
-
-# New variable for animation
-animation_frame = 0
 
 # --- 4. Game Loop ---
 running = True
@@ -134,59 +134,46 @@ while running:
     # --- 7. Drawing ---
     screen.fill(TERRARIUM_COLOR)
 
-    color = COLOR_CONTENT
+    lizard_color = COLOR_CONTENT
     if mood == "bored":
-        color = COLOR_BORED
+        lizard_color = COLOR_BORED
     elif mood == "playful":
-        color = COLOR_PLAYFUL
+        lizard_color = COLOR_PLAYFUL
     elif mood == "sad":
-        color = COLOR_SAD
+        lizard_color = COLOR_SAD
     elif mood == "angry":
-        color = COLOR_ANGRY
-
+        lizard_color = COLOR_ANGRY
+    
+    # --- Draw the head and body ---
     for segment in body_segments:
-        pygame.draw.circle(screen, color, segment.center, BODY_SEGMENT_SIZE // 2)
+        pygame.draw.circle(screen, lizard_color, segment.center, BODY_SEGMENT_SIZE)
 
-    # --- 8. Drawing Facial Expressions and Useless Evolutions ---
+    # --- Draw the eyes and mouth ---
     head_pos = body_segments[0].center
+    # Eyes
+    pygame.draw.circle(screen, EYE_COLOR, (head_pos[0] - 8, head_pos[1] - 5), 5)
+    pygame.draw.circle(screen, EYE_COLOR, (head_pos[0] + 8, head_pos[1] - 5), 5)
+    
+    # Mouth and expression
     if mood == "bored":
-        pygame.draw.line(screen, (0,0,0), (head_pos[0]-5, head_pos[1]+5), (head_pos[0]+5, head_pos[1]+5), 2)
+        pygame.draw.line(screen, MOUTH_COLOR, (head_pos[0] - 5, head_pos[1] + 5), (head_pos[0] + 5, head_pos[1] + 5), 2)
     elif mood == "content":
-        # Swirling antennae
-        antennae_length = 15
-        antennae_width = 2
-        
-        pygame.draw.arc(screen, (255, 255, 150), pygame.Rect(head_pos[0]-15, head_pos[1]-20, 10, 10), math.pi, math.pi*1.5, antennae_width)
-        pygame.draw.arc(screen, (255, 255, 150), pygame.Rect(head_pos[0]+5, head_pos[1]-20, 10, 10), math.pi*1.5, math.pi*2, antennae_width)
-        
-        pygame.draw.arc(screen, (0,0,0), (head_pos[0]-5, head_pos[1], 10, 10), 0, 3.14, 2)
+        pygame.draw.arc(screen, MOUTH_COLOR, (head_pos[0] - 5, head_pos[1], 10, 10), 0, math.pi, 2)
     elif mood == "playful":
-        # Spinning pinwheels
-        pinwheel_size = 10
-        pinwheel_angle = animation_frame * 15 # Make it spin
-        for i in range(4):
-            angle = math.radians(pinwheel_angle + i * 90)
-            end_pos_x = head_pos[0] + pinwheel_size * math.cos(angle)
-            end_pos_y = head_pos[1] + pinwheel_size * math.sin(angle)
-            pygame.draw.line(screen, (255,255,255), head_pos, (end_pos_x, end_pos_y), 2)
-            
-        pygame.draw.arc(screen, (0,0,0), (head_pos[0]-5, head_pos[1]-5, 10, 10), 3.14, 6.28, 2)
-        pygame.draw.line(screen, (255, 0, 0), (head_pos[0], head_pos[1]+10), (head_pos[0], head_pos[1]+15), 2)
+        pygame.draw.arc(screen, MOUTH_COLOR, (head_pos[0] - 5, head_pos[1] - 5, 10, 10), math.pi, math.pi * 2, 2)
     elif mood == "sad":
-        pygame.draw.arc(screen, (0,0,0), (head_pos[0]-5, head_pos[1]+5, 10, 10), 3.14, 6.28, 2)
+        pygame.draw.arc(screen, MOUTH_COLOR, (head_pos[0] - 5, head_pos[1] + 5, 10, 10), math.pi, math.pi * 2, 2)
     elif mood == "angry":
-        pygame.draw.line(screen, (0,0,0), (head_pos[0]-5, head_pos[1]-5), (head_pos[0]+5, head_pos[1]-5), 2)
-        pygame.draw.line(screen, (0,0,0), (head_pos[0]-5, head_pos[1]+5), (head_pos[0]+5, head_pos[1]+5), 2)
+        pygame.draw.line(screen, MOUTH_COLOR, (head_pos[0] - 5, head_pos[1] - 5), (head_pos[0] + 5, head_pos[1] - 5), 2)
 
 
-    # --- 9. Displaying the Mood ---
+    # --- 8. Displaying the Mood ---
     mood_text = font.render(f"Mood: {mood.capitalize()}", True, (255, 255, 255))
     screen.blit(mood_text, (10, 10))
 
-    # --- 10. Update the display and clock ---
+    # --- 9. Update the display and clock ---
     pygame.display.flip()
     clock.tick(60)
-    animation_frame += 1
 
-# --- 11. Quit Pygame ---
+# --- 10. Quit Pygame ---
 pygame.quit()
