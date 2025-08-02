@@ -37,10 +37,11 @@ mood = "bored"
 last_mouse_pos = pygame.mouse.get_pos()
 last_change_time = pygame.time.get_ticks()
 playful_timer = 0
-sad_timer = 0
 click_count = 0
 last_click_time = 0
 angry_timer = 0
+random_target_pos = (400, 300)
+last_target_change = pygame.time.get_ticks()
 
 # --- 4. Game Loop ---
 running = True
@@ -63,6 +64,12 @@ while running:
             last_click_time = current_time
 
     # --- 5. Logic: Mood and Evolution ---
+    # Calculate mouse movement speed first, outside of any mood logic
+    dx = mouse_pos[0] - last_mouse_pos[0]
+    dy = mouse_pos[1] - last_mouse_pos[1]
+    mouse_speed = (dx**2 + dy**2)**0.5
+    last_mouse_pos = mouse_pos
+
     # Check for angry mood (3 rapid clicks)
     if click_count >= 3 and current_time - last_click_time < 1500:
         mood = "angry"
@@ -75,14 +82,9 @@ while running:
              mood = "content"
         elif current_time - angry_timer > 10000:
             mood = "content"
-
-    # Determine other moods based on speed
-    if mood != "angry":
-        dx = mouse_pos[0] - last_mouse_pos[0]
-        dy = mouse_pos[1] - last_mouse_pos[1]
-        mouse_speed = (dx**2 + dy**2)**0.5
-        last_mouse_pos = mouse_pos
-
+        # Since we're angry, we skip the rest of the mood checks
+    else:
+        # Determine other moods based on speed and timers
         if mouse_speed > 30:
             mood = "playful"
             playful_timer = current_time
@@ -91,27 +93,21 @@ while running:
             pass
         
         elif mouse_speed < 1:
-            if current_time - last_change_time > 10000:
+            if current_time - last_change_time > 15000:
+                mood = "angry"
+                angry_timer = current_time
+            elif current_time - last_change_time > 10000:
                 mood = "sad"
-                sad_timer = current_time # Start sad timer
             elif current_time - last_change_time > 3000:
                 mood = "bored"
         else:
             mood = "content"
-            
-        if mood != "bored" and mood != "sad" and mouse_speed > 1:
             last_change_time = current_time
-    
-    # Logic to transition from sad to angry
-    if mood == "sad" and mouse_speed < 1 and current_time - sad_timer > 5000:
-        mood = "angry"
-        angry_timer = current_time
-        
+
     # --- 6. Logic: Movement ---
     head_target_pos = mouse_pos
 
     if mood == "angry":
-        # Change the random target every few seconds
         if current_time - last_target_change > 2000:
             random_target_pos = (random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT))
             last_target_change = current_time
