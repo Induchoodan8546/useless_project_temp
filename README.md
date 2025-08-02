@@ -76,10 +76,56 @@ Open the `index.html` file in a modern web browser (like Chrome, Firefox, or Edg
 
 ### Diagrams
 
-- A simple workflow diagram showing how user input is processed to update the pet's mood and render the final animation.
+Here is a simple workflow diagram describing the process from user input to the final animated output of Chithraguptan:
 
-**For Hardware:**  
-(Not applicable, as this is a software-only project.)
+User Input:
+
+Mouse Control: Mouse movement speed, mouse position, and mouse clicks.
+
+Hand Gesture Control: Real-time video from the webcam is processed by MediaPipe to detect hand gestures (e.g., fist, pinch, open palm) and landmark positions.
+
+Input Processing:
+
+The JavaScript code continuously monitors the input source (either mouse events or MediaPipe's hand tracking results).
+
+It calculates relevant metrics, such as mouse speed or identifies the current hand gesture.
+
+A state machine or conditional logic determines the current mood of Chithraguptan based on these inputs.
+
+Mood & State Update:
+
+The mood variable is updated to one of the predefined states: content, playful, bored, sad, or angry.
+
+Timers and thresholds are used to transition between moods, such as becoming bored after 3 seconds of inactivity or angry after three clicks.
+
+3D Rendering (Three.js):
+
+The animate() function in Three.js runs in a continuous loop (requestAnimationFrame).
+
+Based on the current mood, the animation logic adjusts the 3D model's properties:
+
+Position: The head and body segments lerp (linearly interpolate) towards the target position (mouse cursor or hand).
+
+Color: The material color of the body parts smoothly transitions to the color associated with the new mood (e.g., green for content, red for angry).
+
+Facial Expressions: The mouth and eyebrow meshes are transformed (rotated, scaled) to match the mood (e.g., a smile for playful, a frown for angry).
+
+Body Animations: The arms and legs are animated with rotations to show different behaviors (e.g., wiggling for playful, stiff for angry).
+
+Final Output:
+
+The Three.js renderer draws the updated 3D scene to the <canvas> element.
+
+The UI elements (mood-display, debug-info) are updated to reflect the current state.
+
+The user sees Chithraguptan's new animation, position, and mood on the screen.
+
+
+
+
+
+
+
 
 ---
 
