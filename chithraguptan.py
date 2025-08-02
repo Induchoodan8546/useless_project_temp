@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 # --- 1. Initialization ---
 pygame.init()
@@ -43,6 +44,9 @@ angry_timer = 0
 random_target_pos = (400, 300)
 last_target_change = pygame.time.get_ticks()
 
+# New variable for animation
+animation_frame = 0
+
 # --- 4. Game Loop ---
 running = True
 clock = pygame.time.Clock()
@@ -64,34 +68,27 @@ while running:
             last_click_time = current_time
 
     # --- 5. Logic: Mood and Evolution ---
-    # Calculate mouse movement speed first, outside of any mood logic
     dx = mouse_pos[0] - last_mouse_pos[0]
     dy = mouse_pos[1] - last_mouse_pos[1]
     mouse_speed = (dx**2 + dy**2)**0.5
     last_mouse_pos = mouse_pos
 
-    # Check for angry mood (3 rapid clicks)
     if click_count >= 3 and current_time - last_click_time < 1500:
         mood = "angry"
         angry_timer = current_time
         click_count = 0
     
-    # Logic to calm him down
     if mood == "angry":
         if mouse_speed < 5 and current_time - angry_timer > 3000:
              mood = "content"
         elif current_time - angry_timer > 10000:
             mood = "content"
-        # Since we're angry, we skip the rest of the mood checks
     else:
-        # Determine other moods based on speed and timers
         if mouse_speed > 30:
             mood = "playful"
             playful_timer = current_time
-        
         elif mood == "playful" and current_time - playful_timer < 500:
             pass
-        
         elif mouse_speed < 1:
             if current_time - last_change_time > 15000:
                 mood = "angry"
@@ -150,13 +147,29 @@ while running:
     for segment in body_segments:
         pygame.draw.circle(screen, color, segment.center, BODY_SEGMENT_SIZE // 2)
 
-    # Draw facial expressions on the head
+    # --- 8. Drawing Facial Expressions and Useless Evolutions ---
     head_pos = body_segments[0].center
     if mood == "bored":
         pygame.draw.line(screen, (0,0,0), (head_pos[0]-5, head_pos[1]+5), (head_pos[0]+5, head_pos[1]+5), 2)
     elif mood == "content":
+        # Swirling antennae
+        antennae_length = 15
+        antennae_width = 2
+        
+        pygame.draw.arc(screen, (255, 255, 150), pygame.Rect(head_pos[0]-15, head_pos[1]-20, 10, 10), math.pi, math.pi*1.5, antennae_width)
+        pygame.draw.arc(screen, (255, 255, 150), pygame.Rect(head_pos[0]+5, head_pos[1]-20, 10, 10), math.pi*1.5, math.pi*2, antennae_width)
+        
         pygame.draw.arc(screen, (0,0,0), (head_pos[0]-5, head_pos[1], 10, 10), 0, 3.14, 2)
     elif mood == "playful":
+        # Spinning pinwheels
+        pinwheel_size = 10
+        pinwheel_angle = animation_frame * 15 # Make it spin
+        for i in range(4):
+            angle = math.radians(pinwheel_angle + i * 90)
+            end_pos_x = head_pos[0] + pinwheel_size * math.cos(angle)
+            end_pos_y = head_pos[1] + pinwheel_size * math.sin(angle)
+            pygame.draw.line(screen, (255,255,255), head_pos, (end_pos_x, end_pos_y), 2)
+            
         pygame.draw.arc(screen, (0,0,0), (head_pos[0]-5, head_pos[1]-5, 10, 10), 3.14, 6.28, 2)
         pygame.draw.line(screen, (255, 0, 0), (head_pos[0], head_pos[1]+10), (head_pos[0], head_pos[1]+15), 2)
     elif mood == "sad":
@@ -166,13 +179,14 @@ while running:
         pygame.draw.line(screen, (0,0,0), (head_pos[0]-5, head_pos[1]+5), (head_pos[0]+5, head_pos[1]+5), 2)
 
 
-    # --- 8. Displaying the Mood ---
+    # --- 9. Displaying the Mood ---
     mood_text = font.render(f"Mood: {mood.capitalize()}", True, (255, 255, 255))
     screen.blit(mood_text, (10, 10))
 
-    # --- 9. Update the display and clock ---
+    # --- 10. Update the display and clock ---
     pygame.display.flip()
     clock.tick(60)
+    animation_frame += 1
 
-# --- 10. Quit Pygame ---
+# --- 11. Quit Pygame ---
 pygame.quit()
