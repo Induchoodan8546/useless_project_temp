@@ -12,6 +12,8 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             overflow: hidden;
+            background-color: #1a202c;
+            /* Dark background color */
         }
 
         canvas {
@@ -28,6 +30,7 @@
             color: white;
             font-size: 1.25rem;
             font-weight: bold;
+            z-index: 10;
         }
 
         #instructions {
@@ -40,6 +43,7 @@
             color: white;
             font-size: 0.9rem;
             line-height: 1.5;
+            z-index: 10;
         }
 
         #llm-response-box {
@@ -57,6 +61,7 @@
             text-align: center;
             display: none;
             /* Initially hidden */
+            z-index: 10;
         }
 
         #llm-response-box p {
@@ -74,10 +79,14 @@
             border-radius: 5px;
             font-size: 0.9rem;
         }
+
+        #cheer-up-btn {
+            z-index: 10;
+        }
     </style>
 </head>
 
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+<body>
     <div id="mood-display">Mood: Content</div>
     <div id="instructions">
         <p><strong>INSTRUCTIONS:</strong></p>
@@ -101,7 +110,8 @@
         // --- Core Three.js Setup ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setClearColor(0x1a202c); // Match background
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
@@ -110,32 +120,99 @@
         // --- Lighting ---
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
-        const pointLight = new THREE.PointLight(0xffffff, 1);
-        pointLight.position.set(10, 10, 10);
-        scene.add(pointLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(0, 10, 10);
+        scene.add(directionalLight);
 
         // --- Chithraguptan's 3D Body ---
         const bodyParts = [];
+        const eyes = [];
+        const arms = [];
+        const legs = [];
+        let mouth;
+
         const numSegments = 10;
-        const segmentRadius = 1;
         const segmentGap = 0.5;
 
         // Create the head
         const headGeometry = new THREE.SphereGeometry(2, 32, 32);
-        const headMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 }); // Default green
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 });
         const head = new THREE.Mesh(headGeometry, headMaterial);
         scene.add(head);
         bodyParts.push(head);
 
-        // Create the body segments
+        // Create Eyes and add them to the head
+        const eyeGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 }); // Black eyes
+
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+        leftEye.position.set(-0.7, 0.5, 1.6); // x, y, z relative to head
+        head.add(leftEye); // Attach eye to head
+        eyes.push(leftEye);
+
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+        rightEye.position.set(0.7, 0.5, 1.6);
+        head.add(rightEye); // Attach eye to head
+        eyes.push(rightEye);
+
+        // Create Mouth and add it to the head
+        const mouthGeometry = new THREE.TorusGeometry(0.8, 0.15, 8, 16, Math.PI); // A semi-circle
+        const mouthMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+        mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+        mouth.position.set(0, -0.5, 1.5); // Position it below the eyes
+        mouth.rotation.z = Math.PI; // Start with a frown (will be updated)
+        head.add(mouth); // Attach mouth to head
+
+        // Create the body segments (tapering into a tail)
         for (let i = 0; i < numSegments; i++) {
+            const scale = 1.0 - (i / numSegments) * 0.5; // Decrease scale for each segment
+            const segmentRadius = 1 * scale;
             const bodyGeometry = new THREE.SphereGeometry(segmentRadius, 32, 32);
             const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 });
             const bodySegment = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            bodySegment.position.y = -(i + 1) * (segmentRadius * 2 + segmentGap);
+
+            // Initial positioning
+            const prevY = bodyParts[i] ? bodyParts[i].position.y : 0;
+            const prevRadius = bodyParts[i] ? bodyParts[i].geometry.parameters.radius : 2;
+            bodySegment.position.y = prevY - (prevRadius + segmentRadius + segmentGap);
+
             scene.add(bodySegment);
             bodyParts.push(bodySegment);
+
+            // Add arms to the first body segment
+            if (i === 0) {
+                const armGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 8);
+                const armMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 });
+
+                const leftArm = new THREE.Mesh(armGeometry, armMaterial.clone());
+                leftArm.position.set(-1.5, 0, 0);
+                bodySegment.add(leftArm); // Attach arm to segment
+                arms.push(leftArm);
+
+                const rightArm = new THREE.Mesh(armGeometry, armMaterial.clone());
+                rightArm.position.set(1.5, 0, 0);
+                bodySegment.add(rightArm); // Attach arm to segment
+                arms.push(rightArm);
+            }
+            // Add legs to the second body segment
+            if (i === 1) {
+                const legGeometry = new THREE.CylinderGeometry(0.3, 0.3, 2, 8);
+                const legMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 });
+
+                const leftLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
+                leftLeg.position.set(-1.2, -1, 0);
+                leftLeg.rotation.z = Math.PI / 8;
+                bodySegment.add(leftLeg); // Attach leg to segment
+                legs.push(leftLeg);
+
+                const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
+                rightLeg.position.set(1.2, -1, 0);
+                rightLeg.rotation.z = -Math.PI / 8;
+                bodySegment.add(rightLeg); // Attach leg to segment
+                legs.push(rightLeg);
+            }
         }
+
 
         // --- Game State Variables ---
         let mood = "content";
@@ -156,11 +233,11 @@
         const closeBtn = llmResponseBox.querySelector('.close-btn');
 
         const moodColors = {
-            "bored": 0x646464, // Grey
-            "content": 0x32cd32, // Green
-            "playful": 0x00ff00, // Lime
-            "sad": 0x464696, // Muted blue
-            "angry": 0xff3232 // Red
+            "bored": 0x646464,
+            "content": 0x32CD32,
+            "playful": 0x00ff00,
+            "sad": 0x464696,
+            "angry": 0xff3232
         };
 
         // --- LLM API Integration ---
@@ -174,8 +251,8 @@
             let chatHistory = [];
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
             const payload = { contents: chatHistory };
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = ""; // IMPORTANT: Add your API Key here
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
             let retries = 0;
             const maxRetries = 5;
@@ -252,16 +329,16 @@
             let prompt = "";
             switch (mood) {
                 case "bored":
-                    prompt = "Give a short, creative suggestion to cure boredom for a digital pet named Chithraguptan. Do not use emojis.";
+                    prompt = "Provide a fun and engaging activity for a pet that seems bored. The response should be concise and no more than 20 words.";
                     break;
                 case "sad":
-                    prompt = "Generate a single, uplifting and short quote to cheer up a sad digital pet named Chithraguptan. The quote should be no longer than 15 words.";
+                    prompt = "Generate a kind and uplifting message to comfort a pet that is sad. The response should be concise and no more than 20 words.";
                     break;
                 case "angry":
-                    prompt = "Generate a single, calming and concise piece of advice for an angry digital pet named Chithraguptan. The message should be no longer than 10 words.";
+                    prompt = "Offer a single, calming technique or piece of advice to soothe an angry pet. The response should be concise and no more than 20 words.";
                     break;
                 default:
-                    prompt = "Generate a short, playful, and fun fact about lizards. The fact should be no longer than 10 words.";
+                    prompt = "Generate a short, playful, and fun fact about a lizard or gecko.";
                     break;
             }
             getLlmResponse(prompt);
@@ -292,7 +369,7 @@
                     mood = "content";
                 }
             } else {
-                if (mouseSpeed > 50) { // Adjusted speed for web
+                if (mouseSpeed > 50) {
                     mood = "playful";
                 } else if (timeSinceMovement > 15) {
                     mood = "angry";
@@ -328,11 +405,9 @@
                 );
             }
 
-            // Smoothly move the head
             const headTarget = targetPosition.clone();
             bodyParts[0].position.lerp(headTarget, 0.05);
 
-            // Animate the body segments to follow the head with a delay
             for (let i = 1; i < bodyParts.length; i++) {
                 const prev = bodyParts[i - 1];
                 const current = bodyParts[i];
@@ -341,13 +416,72 @@
 
             // --- Visual Effects ---
             const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+            // We don't pulse the whole body anymore to keep limbs stable
             head.scale.set(pulse, pulse, pulse);
 
-            // Mood-based color change
-            const currentColor = new THREE.Color(bodyParts[0].material.color);
+            // Animate limbs, face, and mouth based on mood
+            const time = Date.now() * 0.01;
+
+            // Limb Animation
+            if (mood === 'playful') {
+                arms.forEach(arm => { arm.rotation.z = Math.sin(time * 2); }); // Waving
+                legs.forEach(leg => { leg.rotation.x = Math.sin(time); });     // Kicking
+            } else if (mood === 'angry') {
+                arms.forEach(arm => { arm.rotation.x = -Math.PI / 2; });       // Fists forward
+                legs.forEach(leg => { leg.rotation.x = 0; });
+            } else {
+                // Return to neutral pose
+                arms.forEach(arm => { arm.rotation.set(0, 0, 0); });
+                legs.forEach(leg => { leg.rotation.set(0, 0, Math.PI / 8 * (leg.position.x > 0 ? -1 : 1)); });
+            }
+
+            // Eye Animation
+            const sadColor = new THREE.Color(0x5555ff); // Bluish tint for sad eyes
+            if (mood === 'sad') {
+                eyes.forEach(eye => eye.material.color.lerp(sadColor, 0.1));
+            } else {
+                eyes.forEach(eye => eye.material.color.lerp(new THREE.Color(0x000000), 0.1));
+            }
+
+            // Mouth Expression Animation
+            switch (mood) {
+                case 'content':
+                case 'playful':
+                    mouth.rotation.z = 0; // Smile
+                    mouth.scale.set(1, 1, 1);
+                    break;
+                case 'sad':
+                    mouth.rotation.z = Math.PI; // Frown
+                    mouth.scale.set(0.7, 1, 1); // Narrower frown
+                    break;
+                case 'angry':
+                    mouth.rotation.z = Math.PI; // Frown
+                    mouth.scale.set(1, 0.7, 1); // Squished frown
+                    break;
+                case 'bored':
+                    mouth.rotation.z = 0;
+                    mouth.scale.set(1, 0.1, 1); // Flat line
+                    break;
+            }
+
+            // Lerp color for all body parts
+            const currentColor = new THREE.Color(head.material.color);
             const targetColor = new THREE.Color(moodColors[mood]);
             currentColor.lerp(targetColor, 0.05);
-            bodyParts.forEach(part => part.material.color.copy(currentColor));
+
+            // Apply color to all parts, including arms and legs
+            bodyParts.forEach(part => {
+                part.material.color.copy(currentColor);
+                part.children.forEach(child => {
+                    if (child.isMesh && child.material) {
+                        // This will color the attached arms and legs, but not the eyes or mouth
+                        if (eyes.indexOf(child) === -1 && child !== mouth) {
+                            child.material.color.copy(currentColor);
+                        }
+                    }
+                });
+            });
+
 
             renderer.render(scene, camera);
         }
