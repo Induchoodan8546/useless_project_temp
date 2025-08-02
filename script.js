@@ -487,18 +487,20 @@ function animate() {
             break;
         case 'sad':
             mouth.rotation.z = frownRotationZ;
-            mouth.scale.set(0.7, 1, 1);
-            eyebrows.forEach(b => b.visible = true);
-            eyebrows[0].rotation.z = -Math.PI / 8;
-            eyebrows[1].rotation.z = Math.PI / 8;
-            break;
-        case 'angry':
-            mouth.rotation.z = frownRotationZ;
             mouth.scale.set(1, 0.7, 1);
             eyebrows.forEach(b => b.visible = true);
             eyebrows[0].rotation.z = Math.PI / 8;
             eyebrows[1].rotation.z = -Math.PI / 8;
             break;
+          
+        case 'angry':
+            mouth.rotation.z = frownRotationZ;
+            mouth.scale.set(0.7, 1, 1);
+            eyebrows.forEach(b => b.visible = true);
+            eyebrows[0].rotation.z = -Math.PI / 8;
+            eyebrows[1].rotation.z = Math.PI / 8;
+            break;
+            
         case 'bored':
             mouth.rotation.z = smileRotationZ;
             mouth.scale.set(1, 0.1, 1);
