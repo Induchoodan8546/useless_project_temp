@@ -1,0 +1,96 @@
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+    background-color: #1a202c;
+}
+
+canvas {
+    display: block;
+}
+
+#mood-display,
+#instructions,
+#llm-response-box,
+#cheer-up-btn,
+#control-switch-btn,
+#debug-info,
+#debug-toggle-btn {
+    position: absolute;
+    z-index: 10;
+}
+
+#mood-display {
+    top: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+#debug-info {
+    top: 80px;
+    left: 20px;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.8rem;
+    display: none;
+}
+
+#instructions {
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+#llm-response-box {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 400px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #333;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    display: none;
+}
+
+#llm-response-box p {
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+    font-style: italic;
+}
+
+#llm-response-box .close-btn {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.input_video {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 160px;
+    height: 120px;
+    border: 2px solid #fff;
+    border-radius: 8px;
+    display: none;
+}
