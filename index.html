@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chithraguptan 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #mood-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        #llm-response-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #333;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            display: none;
+            /* Initially hidden */
+        }
+
+        #llm-response-box p {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+
+        #llm-response-box .close-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+    <div id="mood-display">Mood: Content</div>
+    <div id="instructions">
+        <p><strong>INSTRUCTIONS:</strong></p>
+        <p>Move mouse slowly: Content (Green)</p>
+        <p>Move mouse fast: Playful (Lime)</p>
+        <p>No movement for 3s: Bored (Blue)</p>
+        <p>No movement for 10s: Sad (Purple)</p>
+        <p>No movement for 15s: Angry (Red)</p>
+        <p>Click head 3 times: Angry (Rebellious)</p>
+        <p>Calm an angry pet with slow, deliberate movement.</p>
+    </div>
+    <div id="llm-response-box">
+        <p id="llm-response-text">Chithraguptan is thinking...</p>
+        <button class="close-btn">Close</button>
+    </div>
+    <button id="cheer-up-btn"
+        class="absolute top-20 right-20 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-full shadow-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105">
+        Cheer Up! ✨
+    </button>
+    <script>
+        // --- Core Three.js Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        camera.position.z = 25;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // --- Chithraguptan's 3D Body ---
+        const bodyParts = [];
+        const numSegments = 10;
+        const segmentRadius = 1;
+        const segmentGap = 0.5;
+
+        // Create the head
+        const headGeometry = new THREE.SphereGeometry(2, 32, 32);
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 }); // Default green
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        scene.add(head);
+        bodyParts.push(head);
+
+        // Create the body segments
+        for (let i = 0; i < numSegments; i++) {
+            const bodyGeometry = new THREE.SphereGeometry(segmentRadius, 32, 32);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x32cd32 });
+            const bodySegment = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            bodySegment.position.y = -(i + 1) * (segmentRadius * 2 + segmentGap);
+            scene.add(bodySegment);
+            bodyParts.push(bodySegment);
+        }
+
+        // --- Game State Variables ---
+        let mood = "content";
+        let lastMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let mouseSpeed = 0;
+        let lastMovementTime = Date.now();
+        let clickCount = 0;
+        let lastClickTime = 0;
+        let angryTimer = 0;
+        let randomTarget = new THREE.Vector3(0, 0, 0);
+        let lastTargetChange = Date.now();
+        let llmIsLoading = false;
+
+        const moodDisplay = document.getElementById('mood-display');
+        const cheerUpBtn = document.getElementById('cheer-up-btn');
+        const llmResponseBox = document.getElementById('llm-response-box');
+        const llmResponseText = document.getElementById('llm-response-text');
+        const closeBtn = llmResponseBox.querySelector('.close-btn');
+
+        const moodColors = {
+            "bored": 0x646464, // Grey
+            "content": 0x32cd32, // Green
+            "playful": 0x00ff00, // Lime
+            "sad": 0x464696, // Muted blue
+            "angry": 0xff3232 // Red
+        };
+
+        // --- LLM API Integration ---
+        async function getLlmResponse(prompt) {
+            if (llmIsLoading) return;
+            llmIsLoading = true;
+            llmResponseBox.style.display = 'block';
+            llmResponseText.innerText = 'Chithraguptan is thinking...';
+            cheerUpBtn.disabled = true;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            let retries = 0;
+            const maxRetries = 5;
+            const initialDelay = 1000;
+
+            const makeApiCall = async () => {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        if (retries < maxRetries) {
+                            const delay = initialDelay * Math.pow(2, retries) + Math.random() * 1000;
+                            retries++;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            return await makeApiCall();
+                        } else {
+                            throw new Error('API request failed after multiple retries.');
+                        }
+                    }
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        llmResponseText.innerText = text;
+                    } else {
+                        llmResponseText.innerText = "I'm not sure what to say right now.";
+                    }
+                } catch (error) {
+                    console.error('API Error:', error);
+                    llmResponseText.innerText = "An error occurred. Please try again.";
+                } finally {
+                    llmIsLoading = false;
+                    cheerUpBtn.disabled = false;
+                }
+            };
+            await makeApiCall();
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('mousemove', (event) => {
+            const dx = event.clientX - lastMousePos.x;
+            const dy = event.clientY - lastMousePos.y;
+            mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+            lastMousePos = { x: event.clientX, y: event.clientY };
+            lastMovementTime = Date.now();
+        });
+
+        window.addEventListener('mousedown', (event) => {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bodyParts, true);
+
+            if (intersects.length > 0) {
+                const now = Date.now();
+                if (now - lastClickTime < 500) {
+                    clickCount++;
+                } else {
+                    clickCount = 1;
+                }
+                lastClickTime = now;
+            }
+        });
+
+        cheerUpBtn.addEventListener('click', () => {
+            let prompt = "";
+            switch (mood) {
+                case "bored":
+                    prompt = "Give a short, creative suggestion to cure boredom for a digital pet named Chithraguptan. Do not use emojis.";
+                    break;
+                case "sad":
+                    prompt = "Generate a single, uplifting and short quote to cheer up a sad digital pet named Chithraguptan. The quote should be no longer than 15 words.";
+                    break;
+                case "angry":
+                    prompt = "Generate a single, calming and concise piece of advice for an angry digital pet named Chithraguptan. The message should be no longer than 10 words.";
+                    break;
+                default:
+                    prompt = "Generate a short, playful, and fun fact about lizards. The fact should be no longer than 10 words.";
+                    break;
+            }
+            getLlmResponse(prompt);
+        });
+
+        closeBtn.addEventListener('click', () => {
+            llmResponseBox.style.display = 'none';
+        });
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // --- Mood Logic ---
+            const now = Date.now();
+            const timeSinceMovement = (now - lastMovementTime) / 1000;
+
+            if (clickCount >= 3 && now - lastClickTime < 1500) {
+                mood = "angry";
+                angryTimer = now;
+                clickCount = 0;
+            }
+
+            if (mood === "angry") {
+                if (mouseSpeed < 5 && now - angryTimer > 3000) {
+                    mood = "content";
+                } else if (now - angryTimer > 10000) {
+                    mood = "content";
+                }
+            } else {
+                if (mouseSpeed > 50) { // Adjusted speed for web
+                    mood = "playful";
+                } else if (timeSinceMovement > 15) {
+                    mood = "angry";
+                    angryTimer = now;
+                } else if (timeSinceMovement > 10) {
+                    mood = "sad";
+                } else if (timeSinceMovement > 3) {
+                    mood = "bored";
+                } else {
+                    mood = "content";
+                }
+            }
+
+            moodDisplay.innerText = `Mood: ${mood.charAt(0).toUpperCase() + mood.slice(1)}`;
+
+            // --- Movement Logic ---
+            const targetPosition = new THREE.Vector3();
+            if (mood === "angry") {
+                if (now - lastTargetChange > 2000) {
+                    randomTarget.set(
+                        (Math.random() - 0.5) * 50,
+                        (Math.random() - 0.5) * 50,
+                        (Math.random() - 0.5) * 50
+                    );
+                    lastTargetChange = now;
+                }
+                targetPosition.copy(randomTarget);
+            } else {
+                targetPosition.set(
+                    (lastMousePos.x / window.innerWidth) * 40 - 20,
+                    -(lastMousePos.y / window.innerHeight) * 40 + 20,
+                    0
+                );
+            }
+
+            // Smoothly move the head
+            const headTarget = targetPosition.clone();
+            bodyParts[0].position.lerp(headTarget, 0.05);
+
+            // Animate the body segments to follow the head with a delay
+            for (let i = 1; i < bodyParts.length; i++) {
+                const prev = bodyParts[i - 1];
+                const current = bodyParts[i];
+                current.position.lerp(prev.position, 0.1);
+            }
+
+            // --- Visual Effects ---
+            const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+            head.scale.set(pulse, pulse, pulse);
+
+            // Mood-based color change
+            const currentColor = new THREE.Color(bodyParts[0].material.color);
+            const targetColor = new THREE.Color(moodColors[mood]);
+            currentColor.lerp(targetColor, 0.05);
+            bodyParts.forEach(part => part.material.color.copy(currentColor));
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = animate;
+
+        // --- Handle window resize ---
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            renderer.setSize(newWidth, newHeight);
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+
+</html>
