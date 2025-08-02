@@ -69,8 +69,8 @@ Open the `index.html` file in a modern web browser (like Chrome, Firefox, or Edg
 **For Software:**
 
 ### Screenshots
-![alt text](image.png)
-- Chithraguptan in his default 'Content' mood, calmly following the user's cursor with a gentle smile.  
+
+![alt text](<Screenshot 2025-08-02 160650.png>) 
 - The 'Angry' mood, triggered by a fist gesture or inactivity. The pet turns red, frowns, and displays angry eyebrows.  
 - Hand Gesture Control is active, with the live webcam feed visible in the top-right corner for real-time interaction.
 
