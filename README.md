@@ -1,4 +1,4 @@
-<img width="1680" height="400" alt="Chithraguptan Banner" src="https://www.google.com/search?q=https://i.imgur.com/g1y2f5L.png" />
+
 
 # Chithraguptan 🎯
 
